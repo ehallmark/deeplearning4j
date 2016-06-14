@@ -48,9 +48,10 @@ public class FileLabelAwareIterator implements LabelAwareIterator {
     public LabelledDocument nextDocument() {
         File fileToRead = files.get(position.getAndIncrement());
         String label = fileToRead.getParentFile().getName();
+        BufferedReader reader = null;
         try {
             LabelledDocument document = new LabelledDocument();
-            BufferedReader reader = new BufferedReader(new FileReader(fileToRead));
+            reader = new BufferedReader(new FileReader(fileToRead));
             StringBuilder builder = new StringBuilder();
             String line = "";
             while ((line = reader.readLine()) != null) builder.append(line).append(" ");
@@ -61,6 +62,8 @@ public class FileLabelAwareIterator implements LabelAwareIterator {
             return document;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if(reader!=null) try { reader.close(); } catch (IOException ioe) { ioe.printStackTrace(); }
         }
     }
 
