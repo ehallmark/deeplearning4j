@@ -1,3 +1,10 @@
 #! /bin/bash
-mvn -Dscala.binary.version=2.10 -Dscala.version=2.10.6 "$@"
-mvn -Dscala.binary.version=2.11 -Dscala.version=2.11.7 "$@"
+set -eu
+./change-scala-versions.sh 2.11 # should be idempotent, this is the default
+mvn "$@"
+./change-spark-versions.sh 2
+mvn -Dspark.major.version=2 "$@"
+./change-scala-versions.sh 2.10
+./change-spark-versions.sh 1
+mvn "$@"
+./change-scala-versions.sh 2.11 # back to the default

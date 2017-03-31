@@ -1,42 +1,40 @@
 package org.deeplearning4j.datasets.iterator;
 
-import org.canova.api.records.reader.RecordReader;
-import org.canova.api.records.reader.impl.CSVRecordReader;
-import org.canova.api.records.reader.impl.FileRecordReader;
-import org.canova.api.split.FileSplit;
-import org.canova.api.util.ClassPathResource;
-import org.deeplearning4j.datasets.canova.RecordReaderDataSetIterator;
+import org.datavec.api.records.reader.RecordReader;
+import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
+import org.datavec.api.split.FileSplit;
+import org.datavec.api.util.ClassPathResource;
+import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.datasets.iterator.impl.CifarDataSetIterator;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
+import org.deeplearning4j.nn.conf.preprocessor.CnnToFeedForwardPreProcessor;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.junit.After;
-import org.junit.Before;
+import org.deeplearning4j.util.TestDataSetConsumer;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 
 public class MultipleEpochsIteratorTest {
 
     @Test
-    public void testNextAndReset() throws Exception{
+    public void testNextAndReset() throws Exception {
         int epochs = 3;
 
         RecordReader rr = new CSVRecordReader();
@@ -45,7 +43,7 @@ public class MultipleEpochsIteratorTest {
         MultipleEpochsIterator multiIter = new MultipleEpochsIterator(epochs, iter);
 
         assertTrue(multiIter.hasNext());
-        while(multiIter.hasNext()){
+        while (multiIter.hasNext()) {
             DataSet path = multiIter.next();
             assertFalse(path == null);
         }
@@ -72,7 +70,7 @@ public class MultipleEpochsIteratorTest {
     }
 
     @Test
-    public void testLoadBatchDataSet() throws Exception{
+    public void testLoadBatchDataSet() throws Exception {
         int epochs = 2;
 
         RecordReader rr = new CSVRecordReader();
@@ -81,7 +79,7 @@ public class MultipleEpochsIteratorTest {
         DataSet ds = iter.next(20);
         MultipleEpochsIterator multiIter = new MultipleEpochsIterator(epochs, ds);
 
-        while(multiIter.hasNext()){
+        while (multiIter.hasNext()) {
             DataSet path = multiIter.next(10);
             assertEquals(path.numExamples(), 10, 0.0);
             assertFalse(path == null);
@@ -90,28 +88,99 @@ public class MultipleEpochsIteratorTest {
         assertEquals(epochs, multiIter.epochs);
     }
 
+    @Ignore // use when checking cifar dataset iterator
     @Test
     public void testCifarDataSetIteratorReset() {
         int epochs = 2;
         Nd4j.getRandom().setSeed(12345);
-        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
-                .regularization(false)
-                .learningRate(1.0)
-                .weightInit(WeightInit.XAVIER)
-                .seed(12345L)
-                .list()
-                .layer(0, new DenseLayer.Builder().nIn(400).nOut(50).activation("relu").build())
-                .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT).activation("softmax").nIn(50).nOut(10).build())
-                .pretrain(false).backprop(true)
-                .build();
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder().regularization(false).learningRate(1.0)
+                        .weightInit(WeightInit.XAVIER).seed(12345L).list()
+                        .layer(0, new DenseLayer.Builder().nIn(400).nOut(50).activation(Activation.RELU).build())
+                        .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT)
+                                        .activation(Activation.SOFTMAX).nIn(50).nOut(10).build())
+                        .pretrain(false).backprop(true)
+                        .inputPreProcessor(0, new CnnToFeedForwardPreProcessor(20, 20, 1)).build();
 
         MultiLayerNetwork net = new MultiLayerNetwork(conf);
         net.init();
-        net.setListeners(Arrays.asList((IterationListener) new ScoreIterationListener(1)));
+        net.setListeners(new ScoreIterationListener(1));
 
-        MultipleEpochsIterator ds = new MultipleEpochsIterator(epochs, new CifarDataSetIterator(10,20, new int[]{20,20,1}));
+        MultipleEpochsIterator ds =
+                        new MultipleEpochsIterator(epochs, new CifarDataSetIterator(10, 20, new int[] {20, 20, 1}));
         net.fit(ds);
         assertEquals(epochs, ds.epochs);
         assertEquals(2, ds.batch);
+    }
+
+
+    @Test
+    public void testMEDIWithLoad1() throws Exception {
+        ExistingDataSetIterator iter = new ExistingDataSetIterator(new IterableWithoutException(100));
+        MultipleEpochsIterator iterator = new MultipleEpochsIterator(10, iter, 24);
+        TestDataSetConsumer consumer = new TestDataSetConsumer(iterator, 1);
+        long num = consumer.consumeWhileHasNext(true);
+        assertEquals(10 * 100, num);
+    }
+
+    @Test
+    public void testMEDIWithLoad2() throws Exception {
+        ExistingDataSetIterator iter = new ExistingDataSetIterator(new IterableWithoutException(100));
+        MultipleEpochsIterator iterator = new MultipleEpochsIterator(10, iter, 24);
+        TestDataSetConsumer consumer = new TestDataSetConsumer(iterator, 2);
+        long num1 = 0;
+
+        for (; num1 < 150; num1++) {
+            consumer.consumeOnce(iterator.next(), true);
+        }
+        iterator.reset();
+
+        long num2 = consumer.consumeWhileHasNext(true);
+        assertEquals((10 * 100) + 150, num1 + num2);
+    }
+
+    @Test
+    public void testMEDIWithLoad3() throws Exception {
+        ExistingDataSetIterator iter = new ExistingDataSetIterator(new IterableWithoutException(10000));
+        MultipleEpochsIterator iterator = new MultipleEpochsIterator(iter, 24, 136);
+        TestDataSetConsumer consumer = new TestDataSetConsumer(iterator, 2);
+        long num1 = 0;
+
+        while (iterator.hasNext()) {
+            consumer.consumeOnce(iterator.next(), true);
+            num1++;
+        }
+
+        assertEquals(136, num1);
+    }
+
+    private class IterableWithoutException implements Iterable<DataSet> {
+        private final AtomicLong counter = new AtomicLong(0);
+        private final int datasets;
+
+        public IterableWithoutException(int datasets) {
+            this.datasets = datasets;
+        }
+
+        @Override
+        public Iterator<DataSet> iterator() {
+            counter.set(0);
+            return new Iterator<DataSet>() {
+                @Override
+                public boolean hasNext() {
+                    return counter.get() < datasets;
+                }
+
+                @Override
+                public DataSet next() {
+                    counter.incrementAndGet();
+                    return new DataSet(Nd4j.create(100), Nd4j.create(10));
+                }
+
+                @Override
+                public void remove() {
+
+                }
+            };
+        }
     }
 }

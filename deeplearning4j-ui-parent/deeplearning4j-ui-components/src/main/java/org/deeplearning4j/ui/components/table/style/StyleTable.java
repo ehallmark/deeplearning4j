@@ -1,7 +1,7 @@
 package org.deeplearning4j.ui.components.table.style;
 
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import org.nd4j.shade.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.deeplearning4j.ui.api.LengthUnit;
@@ -13,7 +13,8 @@ import java.awt.*;
 /**
  * Created by Alex on 3/04/2016.
  */
-@Data @EqualsAndHashCode(callSuper=true)
+@Data
+@EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class StyleTable extends Style {
 
@@ -36,7 +37,7 @@ public class StyleTable extends Style {
     }
 
     //No arg constructor for Jackson
-    private StyleTable(){
+    private StyleTable() {
 
     }
 
@@ -112,7 +113,7 @@ public class StyleTable extends Style {
          *
          * @param whitespaceMode    CSS whitespace mode
          */
-        public Builder whitespaceMode(String whitespaceMode){
+        public Builder whitespaceMode(String whitespaceMode) {
             this.whitespaceMode = whitespaceMode;
             return this;
         }

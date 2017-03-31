@@ -2,6 +2,7 @@ package org.deeplearning4j.nn.conf.misc;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.deeplearning4j.nn.conf.graph.GraphVertex;
 import org.deeplearning4j.nn.conf.inputs.InputType;
@@ -9,7 +10,10 @@ import org.deeplearning4j.nn.conf.inputs.InvalidInputTypeException;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.nd4j.linalg.api.ndarray.INDArray;
 
-@AllArgsConstructor @Data @NoArgsConstructor
+@AllArgsConstructor
+@Data
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = false)
 public class TestGraphVertex extends GraphVertex {
 
     private int firstVal;
@@ -17,7 +21,7 @@ public class TestGraphVertex extends GraphVertex {
 
     @Override
     public GraphVertex clone() {
-        return new TestGraphVertex(firstVal,secondVal);
+        return new TestGraphVertex(firstVal, secondVal);
     }
 
     @Override
@@ -26,12 +30,13 @@ public class TestGraphVertex extends GraphVertex {
     }
 
     @Override
-    public org.deeplearning4j.nn.graph.vertex.GraphVertex instantiate(ComputationGraph graph, String name, int idx, INDArray paramsView) {
+    public org.deeplearning4j.nn.graph.vertex.GraphVertex instantiate(ComputationGraph graph, String name, int idx,
+                    INDArray paramsView, boolean initializeParams) {
         throw new UnsupportedOperationException("Not supported");
     }
 
     @Override
-    public InputType getOutputType(InputType... vertexInputs) throws InvalidInputTypeException {
+    public InputType getOutputType(int layerIndex, InputType... vertexInputs) throws InvalidInputTypeException {
         throw new UnsupportedOperationException();
     }
 }
